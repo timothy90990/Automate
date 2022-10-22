@@ -38,10 +38,6 @@ The program will clean up the files that are created. This will remove the files
 python3 Automate.py -c
 ```
 
-# Future
-- [ ] Add options to check for low hanging fruit
-- [ ] Run the nmap scan automaticly off of python
-
 # Updates
 - Fixed the bug that causes permission errors when running the program.
 - Removed the nmap scan. (This will be added later)
