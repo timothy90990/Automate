@@ -283,7 +283,7 @@ class flags:
                         logging.error("No input file specified after %s" % arg)
                         self.help = True
                         break
-                    if not os.path.isfile(sys.argv[i + 1]):
+                    elif not os.path.isfile(sys.argv[i + 1]):
                         logging.error(
                             "File %s does not exist" % sys.argv[i + 1]
                             + "\n"
@@ -292,7 +292,7 @@ class flags:
                         )
                         self.help = True
                         break
-                    self.inputFile = sys.argv[i + 1]
+                    self.inputFile = True
                 elif arg in ["-f", "--force"]:
                     self.force = True
                 elif arg in ["-c", "--clean"]:
@@ -309,6 +309,7 @@ class flags:
                     logging.error("File does not exist: %s" % arg)
                     self.help = True
                     break
+                INPUTFILE = arg
             else:
                 logging.error("Invalid argument: %s" % arg)
                 self.help = True
