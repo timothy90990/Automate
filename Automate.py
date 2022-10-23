@@ -4,41 +4,43 @@ The functions:
     options: Gets the options from the command line
     main: Runs the program
 Output:
-    nmap_results: Directory with the results
+    SAVEDIR: Directory with the results
+    SAVEDIRPORTS: Directory with the open ports
+    LOGFILE: Log
 By: Timothy Stowe
-Date: 6/4/2022
+Date: 10/22/2022
 """
 
 import logging
 import os
 import sys
 
-
-#
-# Version of python the script is running on
-#
+# ------------------------------------------------------------------------------
+# Settings
+# ------------------------------------------------------------------------------
 PYTHON_VERSION = sys.version_info[0]
-#
-# Author of this script: Timothy Stowe
-#
 AUTHOR = "Timothy Stowe"
-
-#
-# Current version of Automate.py
-#
-VERSION = "0.0.1"
-
-#
-# Save Directory
-#
+VERSION = "0.0.2"
 SAVEDIRPORTS = "nmap_results/open_ports"
 SAVEDIR = "nmap_results"
-
-#
-# Files
-#
-LOGFILE = 'Automate.log'
+LOGFILE = "Automate.log"
 INPUTFILE = ""
+
+# ------------------------------------------------------------------------------
+# Colors formatting
+# ------------------------------------------------------------------------------
+
+
+class bcolors:
+    HEADER = "\033[95m"
+    OKBLUE = "\033[94m"
+    OKCYAN = "\033[96m"
+    OKGREEN = "\033[92m"
+    WARNING = "\033[93m"
+    FAIL = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
 
 
 # ------------------------------------------------------------------------------
@@ -46,10 +48,12 @@ INPUTFILE = ""
 # ------------------------------------------------------------------------------
 
 
-consoleFormatter = logging.Formatter(
-    '%(message)s')
-logging.basicConfig(filename=LOGFILE, level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s %(lineno)d %(message)s')
+consoleFormatter = logging.Formatter("%(message)s")
+logging.basicConfig(
+    filename=LOGFILE,
+    level=logging.DEBUG,
+    format="%(asctime)s %(levelname)s %(lineno)d %(message)s",
+)
 
 consoleHandler = logging.StreamHandler()
 consoleHandler.setFormatter(consoleFormatter)
@@ -87,8 +91,7 @@ class HostInfo:
         with open(SAVEDIR + "/" + "HostInfo.txt", "a") as f:
             for host in self.host:
                 f.write("Host: " + host + "\n")
-                f.write(
-                    "Ports: " + ", ".join(self.all[self.host.index(host)]) + "\n")
+                f.write("Ports: " + ", ".join(self.all[self.host.index(host)]) + "\n")
                 f.write("\n")
 
     def getSublist(self, LargeList):
@@ -109,26 +112,12 @@ class HostInfo:
             port = service.split("/")[0]
             portType = service.split("/")[1]
             service = service.split("/")[2]
-            with open(SAVEDIRPORTS+"/%s_%s_%s.txt" %
-                      (port, portType, service), "a") as f:
+            with open(
+                SAVEDIRPORTS + "/%s_%s_%s.txt" % (port, portType, service), "a"
+            ) as f:
                 for host in sameService:
                     f.write("%s\n" % host)
 
-#
-# Color formatting
-#
-
-
-class bcolors:
-    HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
-    WARNING = '\033[93m'
-    FAIL = '\033[91m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 # ------------------------------------------------------------------------------
 # Start of nmap command section
@@ -144,7 +133,7 @@ class nmapParse:
             # Open up the nmap results file
             with open(flags.inputFile, "r") as f:
                 for line in f:
-                    if "nmap" in line:
+                    if line[0] == "#" or "nmap" in line:
                         continue
                     elif "open" in line:
                         lst.append(line)
@@ -163,29 +152,29 @@ class nmapParse:
         # to the port file
 
         for line in lst:
-            if "open" not in line:
+            if "Status:" in line or "open" not in line:
                 continue
             line = line.split()
             ip_address = line[1]
             portList, portPlusTypeList, servicesList, allList = [], [], [], []
             # Here we are creating a file for each port and writting the ip
             # to the port file
-            for x in line:
+            for ports_r in line:
                 # Loops through the line and checks to see if it is a port
                 # and if the port is open ignoring filtered ports
-                if "open" in x:
+                if "open" in ports_r:
                     # Get the port number
-                    port = x.split("/")[0]
-                    portType = x.split("/")[2]
-                    service = x.split("/")[4]
+                    port = ports_r.split("/")[0]
+                    portType = ports_r.split("/")[2]
+                    service = ports_r.split("/")[4]
                     if service == "":
                         service = "unknown"
-                    p = port + "/" + portType
-                    a = port + "/" + portType + "/" + service
+                    port_type = port + "/" + portType
+                    port_type_service = port + "/" + portType + "/" + service
                     portList.append(port)
-                    portPlusTypeList.append(p)
+                    portPlusTypeList.append(port_type)
                     servicesList.append(service)
-                    allList.append(a)
+                    allList.append(port_type_service)
             HostInfo.host.append(ip_address)
             HostInfo.ports.append(portList)
             HostInfo.portsPlusType.append(portPlusTypeList)
@@ -208,22 +197,30 @@ class nmapParse:
         udp = HostInfo.udp
 
         logging.info("Creating a file for each port, host, and service")
-        files = ["services.txt", "ports.txt",
-                 "hosts.txt", "all.txt", "tcp.txt", "udp.txt"]
-        data = [services, ports, hosts, all,
-                tcp,  udp]
+        files = [
+            "services.txt",
+            "ports.txt",
+            "hosts.txt",
+            "all.txt",
+            "tcp.txt",
+            "udp.txt",
+        ]
+        data = [services, ports, hosts, all, tcp, udp]
         for x in range(len(files)):
             with open(SAVEDIR + "/%s" % (files[x]), "a") as f:
                 [f.write("%s\n" % x) for x in data[x]]
 
         HostInfo.saveHostInfo()
         logging.info("All Files Created")
-        logging.debug("Totals hosts: %s Services: %s udp: %s tcp: %s" % (
-            len(hosts), len(services), len(udp), len(tcp)))
-        logging.info("Total hosts found: %s" % len(hosts))
-        logging.info("Total services and ports found: %s" % len(ports))
-        logging.info("Total udp ports found: %s" % len(udp))
-        logging.info("Total tcp ports found: %s" % len(tcp))
+        logging.debug(
+            "Totals hosts: %s Services: %s udp: %s tcp: %s"
+            % (len(hosts), len(services), len(udp), len(tcp))
+        )
+        logging.info("Total hosts : %s" % len(hosts))
+        logging.info("Total services and ports : %s" % len(ports))
+        logging.info("Total udp ports : %s" % len(udp))
+        logging.info("Total tcp ports : %s" % len(tcp))
+
 
 # ------------------------------------------------------------------------------
 # Flags
@@ -252,23 +249,72 @@ class flags:
         self.verbose = False
         self.clean = False
         self.inputFile = False
-        for i in range(1, len(argv)):
-            if argv[i] in ("-h", "--help"):
+        self.getUserArgs()
+
+    def getUserArgs(self):
+        avaliableFlags = [
+            "-h",
+            "--help",
+            "-i",
+            "-iL",
+            "--input",
+            "--input-list",
+            "-f",
+            "--force",
+            "-c",
+            "--clean",
+            "-n",
+            "-v",
+            "-vv",
+            "--verbose",
+        ]
+        inputList = ["-i", "-iL", "--input", "--input-list"]
+        # Get the user arguments
+        for i, arg in enumerate(sys.argv):
+            if i == 0:
+                continue
+            # Check to see if "-" is the first character
+            if arg[0] == "-" and arg in avaliableFlags:
+                if arg in ["-h", "--help"]:
+                    self.help = True
+                    break
+                elif arg in ["-i", "-iL", "--input", "--input-list"]:
+                    if (i + 1 >= len(sys.argv)) or sys.argv[i + 1] in avaliableFlags:
+                        logging.error("No input file specified after %s" % arg)
+                        self.help = True
+                        break
+                    if not os.path.isfile(sys.argv[i + 1]):
+                        logging.error(
+                            "File %s does not exist" % sys.argv[i + 1]
+                            + "\n"
+                            + "Please enter a valid file or leave blank to use the default\n"
+                            + ".gnmap file in the current directory\n"
+                        )
+                        self.help = True
+                        break
+                    self.inputFile = sys.argv[i + 1]
+                elif arg in ["-f", "--force"]:
+                    self.force = True
+                elif arg in ["-c", "--clean"]:
+                    self.clean = True
+                elif arg in ["-n"]:
+                    self.header = False
+                elif arg in ["-v"]:
+                    consoleHandler.setLevel(logging.INFO)
+                elif arg in ["-vv", "--verbose"]:
+                    consoleHandler.setLevel(logging.DEBUG)
+            # Check to see if the previous argument was a flag
+            elif sys.argv[i - 1] in inputList:
+                if not os.path.isfile(arg):
+                    logging.error("File does not exist: %s" % arg)
+                    self.help = True
+                    break
+            else:
+                logging.error("Invalid argument: %s" % arg)
                 self.help = True
                 break
-            elif argv[i] in ("-iL", "--input-list", "-i", "--input"):
-                self.inputFile = True
-                INPUTFILE = argv[i + 1]
-            elif argv[i] in ("--force", "-f"):
-                self.force = True
-            elif argv[i] in ("--clean", "-c"):
-                self.clean = True
-            elif argv[i] in ("--verbose", "-vv"):
-                consoleHandler.setLevel(logging.DEBUG)
-            elif argv[i] in "-v":
-                consoleHandler.setLevel(logging.INFO)
-            elif argv[i] in "-n":
-                self.header = False
+
+
 # ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------
@@ -285,12 +331,10 @@ def main():
         try:
             logging.info("Removing %s" % SAVEDIR)
             if os.path.exists(SAVEDIRPORTS):
-                [os.remove(SAVEDIRPORTS + "/" + x)
-                 for x in os.listdir(SAVEDIRPORTS)]
+                [os.remove(SAVEDIRPORTS + "/" + x) for x in os.listdir(SAVEDIRPORTS)]
                 os.rmdir(SAVEDIRPORTS)
             if os.path.exists(SAVEDIR):
-                [os.remove(SAVEDIR + "/" + x)
-                 for x in os.listdir(SAVEDIR)]
+                [os.remove(SAVEDIR + "/" + x) for x in os.listdir(SAVEDIR)]
                 os.rmdir(SAVEDIR)
             if flags.clean:
                 # Close the log file
@@ -307,7 +351,7 @@ def main():
     # Skips if the user wants help
     if flags.inputFile is not False or INPUTFILE is not None:
         # look in current directory for a .gnmap
-        files = [f for f in os.listdir('.') if os.path.isfile(f)]
+        files = [f for f in os.listdir(".") if os.path.isfile(f)]
         for f in files:
             # If it is a .gnmap file
             if f.endswith(".gnmap"):
@@ -325,6 +369,11 @@ def main():
     print("Finished parsing files created check %s directory" % SAVEDIR)
 
 
+# ------------------------------------------------------------------------------
+# Help Screen
+# ------------------------------------------------------------------------------
+
+
 def helpScreen():
     print("Usage: python3 Automate.py -iL <inputfile>")
     # Print each flags help __doc__
@@ -336,7 +385,7 @@ def helpScreen():
 
 
 # ------------------------------------------------------------------------------
-# Start of header section
+# Start of header section :TS
 # ------------------------------------------------------------------------------
 
 
@@ -356,7 +405,7 @@ def header():
     logging.info("Starting Automate.py version %s" % VERSION)
     if flags.header is not True:
         return
-    print(bcolors.OKGREEN+header.__doc__.format(VERSION, AUTHOR)+bcolors.ENDC)
+    print(bcolors.OKGREEN + header.__doc__.format(VERSION, AUTHOR) + bcolors.ENDC)
     print("Python Version % s" % PYTHON_VERSION)
     print("This program is used to take a gnmap file and parse for easier automation")
 
