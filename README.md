@@ -51,6 +51,7 @@ Version 0.0.3 beta
 - Organized the code.
 - Added output file types (json,csv,xlm)
 - Additional Bug fixes for flags
+
 Version 0.0.2 beta
 - Fixed the bug that causes permission errors when running the program.
 - Organized the code.
