@@ -8,44 +8,65 @@ Output:
     SAVEDIRPORTS: Directory with the open ports
     LOGFILE: Log
 By: Timothy Stowe
-Date: 10/22/2022
+Date: 10/25/2022
 """
 
 import logging
 import os
+import random
 import sys
+import time
 
 # ------------------------------------------------------------------------------
 # Settings
 # ------------------------------------------------------------------------------
 PYTHON_VERSION = sys.version_info[0]
 AUTHOR = "Timothy Stowe"
-VERSION = "0.0.2"
-SAVEDIRPORTS = "nmap_results/open_ports"
-SAVEDIR = "nmap_results"
+VERSION = "0.0.3"
+SAVEDIR = "nmap_results"  # Cange Savedir to the directory you want to save the results
+SAVEDIRPORTS = SAVEDIR + "/open_ports"
 LOGFILE = "Automate.log"
-INPUTFILE = ""
+INPUTFILE = ""  # Leave blank unless you want to specify before running
+# python -m auto_py_to_exe
 
 # ------------------------------------------------------------------------------
 # Colors formatting
 # ------------------------------------------------------------------------------
-
-
 class bcolors:
     HEADER = "\033[95m"
     OKBLUE = "\033[94m"
     OKCYAN = "\033[96m"
     OKGREEN = "\033[92m"
-    WARNING = "\033[93m"
     FAIL = "\033[91m"
     ENDC = "\033[0m"
     BOLD = "\033[1m"
     UNDERLINE = "\033[4m"
+    GREY = "\x1b[38;20m"
+    YELLOW = "\x1b[33;20m"
+    RED = "\x1b[31;20m"
+    BOLDRED = "\x1b[31;1m"
+    RESET = "\x1b[0m"
+    WARNING = "\033[93m"
 
 
 # ------------------------------------------------------------------------------
 # Start of logging section
 # ------------------------------------------------------------------------------
+class CustomFormatter(logging.Formatter):
+    format = "%(levelname)s: %(message)s"
+
+    FORMATS = {
+        logging.DEBUG: bcolors.GREY + format + bcolors.RESET,
+        logging.INFO: bcolors.GREY + format + bcolors.RESET,
+        logging.WARNING: bcolors.YELLOW + format + bcolors.RESET,
+        logging.ERROR: bcolors.RESET + bcolors.RED + format + bcolors.RESET,
+        logging.CRITICAL: bcolors.BOLDRED + format + bcolors.RESET,
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
 
 
 consoleFormatter = logging.Formatter("%(message)s")
@@ -56,178 +77,229 @@ logging.basicConfig(
 )
 
 consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(consoleFormatter)
+consoleHandler.setFormatter(CustomFormatter())
 consoleHandler.setLevel(logging.ERROR)
 logging.getLogger().addHandler(consoleHandler)
 
 # ------------------------------------------------------------------------------
 # HostInfo Class
 # ------------------------------------------------------------------------------
-
-
 class HostInfo:
     def __init__(self):
-        self.host = []
-        self.ports = []
-        self.portsPlusType = []
-        self.services = []
-        self.all = []
-        self.udp = []
-        self.tcp = []
+        self.inputFile = INPUTFILE
+        self.hostDict = {}
+        self.allServicesList = []
+        self.numbTcp = 0
+        self.numbUdp = 0
+        self.infilelines = []
 
-    def update(self):
-        for slist in self.portsPlusType:
-            for item in slist:
-                if "tcp" in item:
-                    z = item.split("/")[0]
-                    self.tcp.append(z)
-                if "udp" in item:
-                    z = item.split("/")[0]
-                    self.udp.append(z)
-        self.tcp = list(set(self.tcp))
-        self.udp = list(set(self.udp))
+    def setservices(self) -> None:
+        allServicesS = []
+        allServices = []
+        for host in self.hostDict:
+            for service in self.hostDict[host]:
+                all = "/".join(service)
+                if all not in allServicesS:
+                    allServicesS.append(all)
+                    allServices.append(service)
+        self.allServicesList = allServices
+        self.setnumbs()
 
-    def saveHostInfo(self):
+    def setnumbs(self) -> None:
+        for allServ in HostInfo.allServicesList:
+            if "tcp" in allServ[2]:
+                self.numbTcp += 1
+            if "udp" in allServ[2]:
+                self.numbUdp += 1
+
+
+# ------------------------------------------------------------------------------
+# Files Class
+# ------------------------------------------------------------------------------
+class Files:
+    """
+    Files Class where all the files are made
+    """
+
+    def create_dir() -> None:
+        logging.info("Creating %s directory for the results" % SAVEDIR)
+        # elif: Check to see if the directory is empty
+        if not os.path.exists(SAVEDIR):
+            os.makedirs(SAVEDIR)
+        elif os.listdir(SAVEDIR):
+            logging.critical("Directory %s is not empty" % SAVEDIR)
+            sys.exit(1)
+        if not os.path.exists(SAVEDIRPORTS):
+            os.makedirs(SAVEDIRPORTS)
+        elif os.listdir(SAVEDIRPORTS):
+            logging.critical("Directory %s is not empty" ^ SAVEDIRPORTS)
+            sys.exit(1)
+
+    def save_results_file() -> None:
+        services, ports, all, hosts, tcp, udp = [], [], [], [], [], []
+        logging.debug("Getting Sublists")
+
+        for allServ in HostInfo.allServicesList:
+            services.append(allServ[3])
+            ports.append(allServ[0])
+            all.append("/".join(allServ))
+            if "tcp" in allServ[2]:
+                tcp.append(allServ[0])
+            if "udp" in allServ[2]:
+                udp.append(allServ[0])
+        for host in HostInfo.hostDict:
+            hosts.append(host)
+
+        data = {
+            "live_services": services,
+            "live_ports": ports,
+            "live_hosts": hosts,
+            "live_port_type_service": all,
+            "live_tcp_ports": tcp,
+            "live_udp_ports": udp,
+        }
+        files = []
+        for ftype in data:
+            with open(SAVEDIR + "/" + ftype + ".txt", "a") as f:
+                f.write("\n".join(data[ftype]))
+                files.append(ftype + ".txt")
+        logging.debug("Files created: %s" % ", ".join(files))
+
+    def writehosts() -> None:
         with open(SAVEDIR + "/" + "HostInfo.txt", "a") as f:
-            for host in self.host:
+
+            # get total number of hosts
+            f.write("#Total Hosts: %s\n" % len(HostInfo.hostDict))
+            f.write("#Total Services: %s\n" % len(HostInfo.allServicesList))
+            f.write("#Total TCP Services: %s\n" % HostInfo.numbTcp)
+            f.write("#Total UDP Services: %s\n\n" % HostInfo.numbUdp)
+
+            for host in HostInfo.hostDict:
                 f.write("Host: " + host + "\n")
-                f.write("Ports: " + ", ".join(self.all[self.host.index(host)]) + "\n")
+                tempList = []
+                for all in HostInfo.hostDict[host]:
+                    all = "/".join(all)
+                    tempList.append(all)
+                f.write("Ports: " + ", ".join(tempList) + "\n")
                 f.write("\n")
+            logging.debug("Files created: %s" % "HostInfo.txt")
 
-    def getSublist(self, LargeList):
-        lst = []
-        for smallList in LargeList:
-            for item in smallList:
-                lst.append(item)
-        return list(set(lst))
+    def save_ports_file() -> None:
+        logging.info("Creating files in " + SAVEDIRPORTS)
+        files = []
+        for service in HostInfo.allServicesList:
+            file = "%s_%s_%s_%s.txt" % (service[0], service[1], service[2], service[3])
+            files.append(file)
+            with open(SAVEDIRPORTS + "/" + file, "a") as f:
+                for host in HostInfo.hostDict:
+                    if service in HostInfo.hostDict[host]:
+                        f.write("%s\n" % host)
+        logging.debug("Files created: %s" % ", ".join(files))
 
-    def savePortsToFile(self):
-        all = self.getSublist(self.all)
-        for service in all:
-            sameService = []
-            for host in self.host:
-                for serviceOnHost in self.all[self.host.index(host)]:
-                    if service == serviceOnHost:
-                        sameService.append(host)
-            port = service.split("/")[0]
-            portType = service.split("/")[1]
-            service = service.split("/")[2]
-            with open(
-                SAVEDIRPORTS + "/%s_%s_%s.txt" % (port, portType, service), "a"
-            ) as f:
-                for host in sameService:
-                    f.write("%s\n" % host)
+    def save_json() -> None:
+        import json
+
+        with open(SAVEDIR + "/" + "HostInfo.json", "w") as f:
+            json.dump(HostInfo.hostDict, f, indent=4)
+        logging.debug("Files created: %s" % "HostInfo.json")
+
+    def save_csv() -> None:
+        import csv
+
+        with open(SAVEDIR + "/" + "HostInfo.csv", "w") as f:
+            writer = csv.writer(f)
+            for host in HostInfo.hostDict:
+                for service in HostInfo.hostDict[host]:
+                    writer.writerow(
+                        [host, service[0], service[1], service[2], service[3]]
+                    )
+        logging.debug("Files created: %s" % "HostInfo.csv")
+
+    def save_xml() -> None:
+        import xml.etree.ElementTree as ET
+
+        root = ET.Element("HostInfo")
+        for host in HostInfo.hostDict:
+            hostElement = ET.SubElement(root, "Host")
+            hostElement.set("name", host)
+            for service in HostInfo.hostDict[host]:
+                serviceElement = ET.SubElement(hostElement, "Service")
+                serviceElement.set("service", service[3])
+                serviceElement.set("state", service[1])
+                serviceElement.set("protocol", service[2])
+                serviceElement.set("port", service[0])
+        tree = ET.ElementTree(root)
+        tree.write(SAVEDIR + "/" + "HostInfo.xml")
+        logging.debug("Files created: %s" % "HostInfo.xml")
+
+    def save_sql3() -> None:
+        import sqlite3
+
+        conn = sqlite3.connect(SAVEDIR + "/" + "HostInfo.db")
+        c = conn.cursor()
+        c.execute(
+            "CREATE TABLE HostInfo (host text, port text, state text, protocol text, service text)"
+        )
+        for host in HostInfo.hostDict:
+            for service in HostInfo.hostDict[host]:
+                c.execute(
+                    "INSERT INTO HostInfo VALUES (?,?,?,?,?)",
+                    (host, service[0], service[1], service[2], service[3]),
+                )
+        conn.commit()
+        conn.close()
+        logging.debug("Files created: %s" % "HostInfo.db")
 
 
 # ------------------------------------------------------------------------------
-# Start of nmap command section
-# Here we will start all the commands to parse out nmap results
+# Nmap Parser Class
 # ------------------------------------------------------------------------------
-
-
-class nmapParse:
-    def nmap_parser():
-        lst = []
+class NmapParse:
+    def nmap_parser() -> None:
         try:
-            logging.info("Opening %s and parsing results" % flags.inputFile)
-            # Open up the nmap results file
-            with open(flags.inputFile, "r") as f:
+            logging.info("Opening %s and extracting lines" % HostInfo.inputFile)
+            with open(HostInfo.inputFile, "r") as f:
                 for line in f:
-                    if line[0] == "#" or "nmap" in line:
+                    if line[0] == "#":
                         continue
-                    elif "open" in line:
-                        lst.append(line)
-            logging.info("Creating a directory for the results")
-            os.mkdir("nmap_results")
-            os.mkdir(SAVEDIRPORTS)
+                    elif "Ports:" in line:
+                        HostInfo.infilelines.append(line)
         except FileNotFoundError as e:
-            logging.error(e)
+            logging.critical(e)
             sys.exit(1)
         except OSError as e:
             logging.critical(e)
             sys.exit(1)
 
-        logging.info("Parsing Nmap results")
-        # Here we are creating a file for each port and writting the ip
-        # to the port file
+        logging.info("Parsing Nmap file")
+        for line in HostInfo.infilelines:
+            NmapParse.extractor(line)
+        logging.info("Finished parsing Nmap file")
 
-        for line in lst:
-            if "Status:" in line or "open" not in line:
-                continue
-            line = line.split()
-            ip_address = line[1]
-            portList, portPlusTypeList, servicesList, allList = [], [], [], []
-            # Here we are creating a file for each port and writting the ip
-            # to the port file
-            for ports_r in line:
-                # Loops through the line and checks to see if it is a port
-                # and if the port is open ignoring filtered ports
-                if "open" in ports_r:
-                    # Get the port number
-                    port = ports_r.split("/")[0]
-                    portType = ports_r.split("/")[2]
-                    service = ports_r.split("/")[4]
-                    if service == "":
-                        service = "unknown"
-                    port_type = port + "/" + portType
-                    port_type_service = port + "/" + portType + "/" + service
-                    portList.append(port)
-                    portPlusTypeList.append(port_type)
-                    servicesList.append(service)
-                    allList.append(port_type_service)
-            HostInfo.host.append(ip_address)
-            HostInfo.ports.append(portList)
-            HostInfo.portsPlusType.append(portPlusTypeList)
-            HostInfo.services.append(servicesList)
-            HostInfo.all.append(allList)
-        HostInfo.update()
-        logging.info("Finished parsing Nmap results")
+    def extractor(line: str) -> None:
+        line = line.split()
+        ip_address = line[1]
+        allList = []
+        line = line[4:-4]
+        for ports_r in line:
+            ports = NmapParse.ports_list(ports_r)
+            allList.append(ports)
+        HostInfo.hostDict.update({ip_address: allList})
+        HostInfo.setservices()
 
-    def saveToFile():
-        logging.info("Creating files")
-        HostInfo.savePortsToFile()
-        logging.info("Getting Sublists")
-        services = HostInfo.getSublist(HostInfo.services)
-        ports = HostInfo.getSublist(HostInfo.ports)
-        all = HostInfo.getSublist(HostInfo.all)
-        logging.info("Removing duplicates")
-        hosts = list(set(HostInfo.host))
-
-        tcp = HostInfo.tcp
-        udp = HostInfo.udp
-
-        logging.info("Creating a file for each port, host, and service")
-        files = [
-            "services.txt",
-            "ports.txt",
-            "hosts.txt",
-            "all.txt",
-            "tcp.txt",
-            "udp.txt",
-        ]
-        data = [services, ports, hosts, all, tcp, udp]
-        for x in range(len(files)):
-            with open(SAVEDIR + "/%s" % (files[x]), "a") as f:
-                [f.write("%s\n" % x) for x in data[x]]
-
-        HostInfo.saveHostInfo()
-        logging.info("All Files Created")
-        logging.debug(
-            "Totals hosts: %s Services: %s udp: %s tcp: %s"
-            % (len(hosts), len(services), len(udp), len(tcp))
-        )
-        logging.info("Total hosts : %s" % len(hosts))
-        logging.info("Total services and ports : %s" % len(ports))
-        logging.info("Total udp ports : %s" % len(udp))
-        logging.info("Total tcp ports : %s" % len(tcp))
+    def ports_list(ports_r: list) -> list:
+        ports = ports_r.split("/")
+        ports = ports[:-3]
+        ports.pop(3)
+        if ports[3] == "":
+            ports[3] = "unknown"
+        return ports
 
 
 # ------------------------------------------------------------------------------
 # Flags
 # ------------------------------------------------------------------------------
-
-
-class flags:
+class Flag:
     """
     -h  --help                        Displays the help screen
     -i  -iL  --input  --input-list    Input file from nmap scanner (.gnmap)
@@ -248,10 +320,10 @@ class flags:
         self.force = False
         self.verbose = False
         self.clean = False
-        self.inputFile = False
-        self.getUserArgs()
+        self.inputFlag = False
+        self.get_user_args()
 
-    def getUserArgs(self):
+    def get_user_args(self):
         avaliableFlags = [
             "-h",
             "--help",
@@ -279,6 +351,10 @@ class flags:
                     self.help = True
                     break
                 elif arg in ["-i", "-iL", "--input", "--input-list"]:
+                    if self.inputFlag:
+                        logging.error("Only one input file can be used")
+                        self.help = True
+                        break
                     if (i + 1 >= len(sys.argv)) or sys.argv[i + 1] in avaliableFlags:
                         logging.error("No input file specified after %s" % arg)
                         self.help = True
@@ -292,7 +368,9 @@ class flags:
                         )
                         self.help = True
                         break
-                    self.inputFile = True
+                    else:
+                        self.inputFlag = True
+                        HostInfo.inputFile = sys.argv[i + 1]
                 elif arg in ["-f", "--force"]:
                     self.force = True
                 elif arg in ["-c", "--clean"]:
@@ -303,13 +381,8 @@ class flags:
                     consoleHandler.setLevel(logging.INFO)
                 elif arg in ["-vv", "--verbose"]:
                     consoleHandler.setLevel(logging.DEBUG)
-            # Check to see if the previous argument was a flag
-            elif sys.argv[i - 1] in inputList:
-                if not os.path.isfile(arg):
-                    logging.error("File does not exist: %s" % arg)
-                    self.help = True
-                    break
-                INPUTFILE = arg
+            elif self.inputFlag and sys.argv[i - 1] in inputList:
+                continue
             else:
                 logging.error("Invalid argument: %s" % arg)
                 self.help = True
@@ -319,16 +392,12 @@ class flags:
 # ------------------------------------------------------------------------------
 # Options
 # ------------------------------------------------------------------------------
-
-
-def main():
-    if flags.help:
-        helpScreen()
+def main() -> None:
+    if Flag.help:
+        help_screen()
         sys.exit(1)
-    if flags.clean or flags.force:
-        # Check to see if we have enough permissions to delete the files
-        # if we don't have permissions we will exit
-        logging.info("Checking to see if we have permissions to delete files")
+    if Flag.clean or Flag.force:
+        logging.info("Trying to delete files")
         try:
             logging.info("Removing %s" % SAVEDIR)
             if os.path.exists(SAVEDIRPORTS):
@@ -337,8 +406,7 @@ def main():
             if os.path.exists(SAVEDIR):
                 [os.remove(SAVEDIR + "/" + x) for x in os.listdir(SAVEDIR)]
                 os.rmdir(SAVEDIR)
-            if flags.clean:
-                # Close the log file
+            if Flag.clean:
                 logging.info("Closing log file")
                 logging.shutdown()
                 os.remove(LOGFILE)
@@ -347,39 +415,45 @@ def main():
         except OSError as e:
             logging.critical(e)
             sys.exit(1)
-
-    # If user did not provide an input file
-    # Skips if the user wants help
-    if flags.inputFile is not False or INPUTFILE is not None:
+    if Flag.inputFlag == False and HostInfo.inputFile == "":
         # look in current directory for a .gnmap
         files = [f for f in os.listdir(".") if os.path.isfile(f)]
         for f in files:
             # If it is a .gnmap file
             if f.endswith(".gnmap"):
-                flags.inputFile = f
+                HostInfo.inputFile = f
                 break
-        if flags.inputFile == "":
-            logging.critical("No input file provided, exiting")
-            helpScreen()
+        if HostInfo.inputFile == "":
+            logging.critical("No input file provided or found, exiting")
+            help_screen()
             sys.exit(1)
         else:
-            logging.info("No input file provided, using %s" % flags.inputFile)
-    # If user wants help or failed to provide an input file and we couldnt find one
-    nmapParse.nmap_parser()
-    nmapParse.saveToFile()
-    print("Finished parsing files created check %s directory" % SAVEDIR)
+            logging.info("No input file provided, using %s" % HostInfo.inputFile)
+
+    # Start parsing the file
+    NmapParse.nmap_parser()
+
+    # File Saving
+    Files.create_dir()
+    Files.save_ports_file()
+    Files.writehosts()
+    Files.save_results_file()
+    Files.save_json()
+    Files.save_csv()
+    Files.save_xml()
+    # Files.save_sql3()
+
+    # Finish
+    print("Finished parsing, files created check %s directory" % SAVEDIR)
 
 
 # ------------------------------------------------------------------------------
 # Help Screen
 # ------------------------------------------------------------------------------
-
-
-def helpScreen():
+def help_screen() -> None:
     print("Usage: python3 Automate.py -iL <inputfile>")
-    # Print each flags help __doc__
     print("\nFlags:")
-    print(flags.__doc__)
+    print(Flag.__doc__)
     print("\nExamples:")
     print("\tpython3 Automate.py -iL input.gnmap")
     sys.exit(0)
@@ -388,11 +462,9 @@ def helpScreen():
 # ------------------------------------------------------------------------------
 # Start of header section :TS
 # ------------------------------------------------------------------------------
-
-
-def header():
+def header() -> None:
     """
-    #####################################################################
+    {2}#####################################################################
      _______ __   __ _______ _______ __   __ _______ _______ _______
     |   _   |  | |  |       |       |  |_|  |   _   |       |       |
     |  |_|  |  | |  |_     _|   _   |       |  |_|  |_     _|    ___|
@@ -401,19 +473,30 @@ def header():
     |   _   |       | |   | |       | ||_|| |   _   | |   | |   |___
     |__| |__|_______| |___| |_______|_|   |_|__| |__| |___| |_______|
     Version: {0}                                By: {1}
-    #####################################################################
+    #####################################################################{3}
     """
     logging.info("Starting Automate.py version %s" % VERSION)
-    if flags.header is not True:
+    if Flag.header is not True:
         return
-    print(bcolors.OKGREEN + header.__doc__.format(VERSION, AUTHOR) + bcolors.ENDC)
+    colors = [
+        bcolors.OKBLUE,
+        bcolors.OKCYAN,
+        bcolors.OKGREEN,
+        bcolors.YELLOW,
+        bcolors.RED,
+        bcolors.GREY,
+    ]
+    color = random.choice(colors)
+    print(header.__doc__.format(VERSION, AUTHOR, color, bcolors.RESET))
     print("Python Version % s" % PYTHON_VERSION)
     print("This program is used to take a gnmap file and parse for easier automation")
 
 
 ###############################################################################
 if __name__ == "__main__":
+    start_time = time.time()
     HostInfo = HostInfo()
-    flags = flags()
+    Flag = Flag()
     header()
     main()
+    logging.info("Finished in %s seconds" % (time.time() - start_time))
