@@ -9,6 +9,7 @@ Output:
     LOGFILE: Log
 By: Timothy Stowe
 Date: 10/25/2022
+($port, $state, $protocol, $owner, $service, $rpc_info, $version)
 """
 
 import logging
@@ -122,7 +123,7 @@ class Files:
     """
 
     def create_dir() -> None:
-        logging.info("Creating %s directory for the results" % SAVEDIR)
+        logging.info("Creating %s directory" % SAVEDIR)
         # elif: Check to see if the directory is empty
         if not os.path.exists(SAVEDIR):
             os.makedirs(SAVEDIR)
@@ -138,9 +139,8 @@ class Files:
     def save_results_file() -> None:
         services, ports, all, hosts, tcp, udp = [], [], [], [], [], []
         logging.debug("Getting Sublists")
-
         for allServ in HostInfo.allServicesList:
-            services.append(allServ[3])
+            services.append(allServ[4])
             ports.append(allServ[0])
             all.append("/".join(allServ))
             if "tcp" in allServ[2]:
@@ -159,10 +159,12 @@ class Files:
             "live_udp_ports": udp,
         }
         files = []
+        logging.debug("Saving Files")
         for ftype in data:
             with open(SAVEDIR + "/" + ftype + ".txt", "a") as f:
                 f.write("\n".join(data[ftype]))
                 files.append(ftype + ".txt")
+
         logging.debug("Files created: %s" % ", ".join(files))
 
     def writehosts() -> None:
@@ -185,10 +187,16 @@ class Files:
             logging.debug("Files created: %s" % "HostInfo.txt")
 
     def save_ports_file() -> None:
+        # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
         logging.info("Creating files in " + SAVEDIRPORTS)
         files = []
         for service in HostInfo.allServicesList:
-            file = "%s_%s_%s_%s.txt" % (service[0], service[1], service[2], service[3])
+            file = "%s_%s_%s_%s.txt" % (
+                service[0],
+                service[1],
+                service[2],
+                service[4],
+            )
             files.append(file)
             with open(SAVEDIRPORTS + "/" + file, "a") as f:
                 for host in HostInfo.hostDict:
@@ -208,14 +216,28 @@ class Files:
 
         with open(SAVEDIR + "/" + "HostInfo.csv", "w") as f:
             writer = csv.writer(f)
+            # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
+            writer.writerow(
+                ["Host", "Port", "Protocol", "Owner", "Service", "RPC Info", "Version"]
+            )
             for host in HostInfo.hostDict:
                 for service in HostInfo.hostDict[host]:
                     writer.writerow(
-                        [host, service[0], service[1], service[2], service[3]]
+                        [
+                            host,
+                            service[0],
+                            service[1],
+                            service[2],
+                            service[3],
+                            service[4],
+                            service[5],
+                            service[6],
+                        ]
                     )
         logging.debug("Files created: %s" % "HostInfo.csv")
 
     def save_xml() -> None:
+        # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
         import xml.etree.ElementTree as ET
 
         root = ET.Element("HostInfo")
@@ -224,7 +246,10 @@ class Files:
             hostElement.set("name", host)
             for service in HostInfo.hostDict[host]:
                 serviceElement = ET.SubElement(hostElement, "Service")
-                serviceElement.set("service", service[3])
+                serviceElement.set("version", service[6])
+                serviceElement.set("rpc_info", service[5])
+                serviceElement.set("owner", service[3])
+                serviceElement.set("service", service[4])
                 serviceElement.set("state", service[1])
                 serviceElement.set("protocol", service[2])
                 serviceElement.set("port", service[0])
@@ -243,8 +268,17 @@ class Files:
         for host in HostInfo.hostDict:
             for service in HostInfo.hostDict[host]:
                 c.execute(
-                    "INSERT INTO HostInfo VALUES (?,?,?,?,?)",
-                    (host, service[0], service[1], service[2], service[3]),
+                    "INSERT INTO HostInfo VALUES (?,?,?,?,?,?,?)",
+                    (
+                        host,
+                        service[0],
+                        service[1],
+                        service[2],
+                        service[3],
+                        service[4],
+                        service[5],
+                        service[7],
+                    ),
                 )
         conn.commit()
         conn.close()
@@ -281,6 +315,8 @@ class NmapParse:
         ip_address = line[1]
         allList = []
         line = line[4:-4]
+        line = "".join(line)
+        line = line.split(",")
         for ports_r in line:
             ports = NmapParse.ports_list(ports_r)
             allList.append(ports)
@@ -288,11 +324,13 @@ class NmapParse:
         HostInfo.setservices()
 
     def ports_list(ports_r: list) -> list:
+        # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
+        invalid_chars = "\<>:|?*;=!^"
+        for char in invalid_chars:
+            if char in ports_r:
+                logging.debug("Invalid character %s found in: %s" % (char, ports_r))
+                ports_r = ports_r.replace(char, "_")
         ports = ports_r.split("/")
-        ports = ports[:-3]
-        ports.pop(3)
-        if ports[3] == "":
-            ports[3] = "unknown"
         return ports
 
 

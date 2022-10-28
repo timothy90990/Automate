@@ -1,4 +1,4 @@
-# Automate (Version 0.0.3 beta)
+# Automate (Version 0.0.4 beta)
 This code is code to help automate work flow by parsing up gmap files to more usable files for further automation. The goal is to make it easier to automate work flow.
 
 This code will take a gnmap file and parse it to more useable files.
@@ -46,6 +46,10 @@ python3 Automate.py -c
 ```
 
 # Updates
+Version 0.0.4 beta
+- Fixed bug with illegal characters
+- Addeed more information from gnmap file
+
 Version 0.0.3 beta
 - Optimization
 - Organized the code.
