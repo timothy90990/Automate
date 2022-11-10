@@ -1,4 +1,4 @@
-# Automate (Version 0.0.4 beta)
+# Automate (Version 0.0.5 beta)
 This code is code to help automate work flow by parsing up gmap files to more usable files for further automation. The goal is to make it easier to automate work flow.
 
 This code will take a gnmap file and parse it to more useable files.
@@ -7,6 +7,7 @@ This code will take a gnmap file and parse it to more useable files.
 The default behavor to look for a gnmap file in the current directory. After finding the file the program will parse the file and create a directory called 'nmap_results' and put the files in there.
 
 The files that are created are:
+- Automate.html - HTML page of results gathered
 - open_ports:
 	- port_(tcp/udp)_(open/filterd)_service.txt - live hosts that share the same service,port and porttype
 - live_hosts.txt - A list of all the hosts in the network
@@ -46,6 +47,12 @@ python3 Automate.py -c
 ```
 
 # Updates
+Version 0.0.5 beta
+- Additional optimizations
+- Changed storage type to dict
+- Changed how clean function works
+- Added HTML page and additional filetypes
+
 Version 0.0.4 beta
 - Fixed bug with illegal characters
 - Addeed more information from gnmap file
