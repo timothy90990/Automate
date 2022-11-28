@@ -8,13 +8,12 @@ Output:
     HostInfo.saveDirPorts: Directory with the open ports
     LOGFILE: Log
 By: Timothy Stowe
-Date: 10/25/2022
+Date: 11/27/2022
 """
 
 import logging
 import os
 import random
-import re
 import shutil
 import sys
 import time
@@ -25,9 +24,10 @@ import time
 # ------------------------------------------------------------------------------
 PYTHON_VERSION = sys.version_info[0]
 AUTHOR = "Timothy Stowe"
-VERSION = "0.0.5"
+VERSION = "0.0.6"
 LOGFILE = "Automate.log"
 INPUTFILE = ""  # Leave blank unless you want to specify before running
+SUPPORTEDFILES = ["xml", "gnmap"]
 # python -m auto_py_to_exe
 
 # ------------------------------------------------------------------------------
@@ -110,11 +110,11 @@ class HostInfo:
 
     def __setservice(self, service) -> None:
         __temp_dict = {
-            "port": service["port"],
-            "state": service["state"],
-            "protocol": service["protocol"],
-            "service": service["service"],
-            "version": service["version"],
+            "port": service.get("port"),
+            "state": service.get("state"),
+            "protocol": service.get("protocol"),
+            "service": service.get("service"),
+            "version": service.get("version"),
         }
         if __temp_dict not in self.all_service_list:
             self.all_service_list.append(__temp_dict)
@@ -123,10 +123,10 @@ class HostInfo:
         logging.debug("Service already in all_services_dict {}".format(__temp_dict))
 
     def __setnumbs(self, service) -> None:
-        if service["protocol"] == "tcp":
+        if service.get("protocol") == "tcp":
             self.numPors["tcp"] += 1
             logging.debug(f"TCP updated to: {self.numPors['tcp']}")
-        if service["protocol"] == "udp":
+        if service.get("protocol") == "udp":
             logging.debug(f"UDP updated to: {self.numPors['udp']}")
 
 
@@ -168,21 +168,23 @@ class Files:
         HostInfo.saveDirPorts = HostInfo.saveDir + "/open_ports"
 
     def save_all() -> None:
-        Files.save_ports_file()
-        Files.writehosts()
-        Files.save_results_file()
-        Files.save_json()
-        Files.save_csv()
-        Files.save_xml()
-        Files.save_sql3()
-        Files.save_html()
+        try:
+            Files.save_ports_file()
+            Files.writehosts()
+            Files.save_results_file()
+            Files.save_json()
+            Files.save_csv()
+            Files.save_xml()
+            Files.save_html()
+        except Exception as e:
+            logging.error(f"Error in save_all: {e}")
 
     def find_input_file() -> None:
         # look in current directory for a .gnmap
         files = [f for f in os.listdir(".") if os.path.isfile(f)]
         for f in files:
-            # If it is a .gnmap file
-            if f.endswith(".gnmap") or f.endswith(".xml") or f.endswith(".nmap"):
+            # If it ends with any of the SUPPORTEDFILES
+            if f.endswith(tuple(SUPPORTEDFILES)):
                 print("No input provided found %s would you like to use?" % f)
                 try:
                     ans = input("Enter Y/N to continue:")[0].lower()
@@ -267,21 +269,21 @@ class Files:
         services, ports, all, hosts, tcp, udp = [], [], [], [], [], []
         logging.debug("Getting Sublists")
         for allServ in HostInfo.all_service_list:
-            services.append(allServ["service"] + " " + allServ["version"])
-            ports.append(allServ["port"])
+            services.append(allServ.get("service") + " " + allServ.get("version"))
+            ports.append(allServ.get("port"))
             _all_lst = [
-                allServ["port"],
-                allServ["state"],
-                allServ["protocol"],
-                allServ["service"],
-                allServ["version"],
+                allServ.get("port"),
+                allServ.get("state"),
+                allServ.get("protocol"),
+                allServ.get("service"),
+                allServ.get("version"),
             ]
             _all_join = "/".join(_all_lst)
             all.append(_all_join)
-            if "tcp" in allServ["protocol"]:
-                tcp.append(allServ["port"])
-            if "udp" in allServ["protocol"]:
-                udp.append(allServ["port"])
+            if "tcp" in allServ.get("protocol"):
+                tcp.append(allServ.get("port"))
+            if "udp" in allServ.get("protocol"):
+                udp.append(allServ.get("port"))
         for host in HostInfo.host_dict:
             hosts.append(host)
 
@@ -308,8 +310,8 @@ class Files:
             # get total number of hosts
             f.write("#Total Hosts: %s\n" % len(HostInfo.host_dict))
             f.write("#Total Services: %s\n" % len(HostInfo.all_service_list))
-            f.write("#Total TCP Services: %s\n" % HostInfo.numPors["tcp"])
-            f.write("#Total UDP Services: %s\n" % HostInfo.numPors["udp"])
+            f.write("#Total TCP Services: %s\n" % HostInfo.numPors.get("tcp"))
+            f.write("#Total UDP Services: %s\n" % HostInfo.numPors.get("udp"))
 
             f.write("\n")
             for host in HostInfo.host_dict:
@@ -332,10 +334,10 @@ class Files:
         files = []
         for service in HostInfo.all_service_list:
             file = "%s_%s_%s_%s.txt" % (
-                service["port"],
-                service["state"],
-                service["protocol"],
-                service["service"],
+                service.get("port"),
+                service.get("state"),
+                service.get("protocol"),
+                service.get("service"),
             )
             files.append(file)
             with open(HostInfo.saveDirPorts + "/" + file, "a") as f:
@@ -364,12 +366,12 @@ class Files:
                     writer.writerow(
                         [
                             host,
-                            service["port"],
-                            service["protocol"],
+                            service.get("port"),
+                            service.get("protocol"),
                             # service["owner"],
-                            service["service"],
+                            service.get("service"),
                             # service["rpc_info"],
-                            service["version"],
+                            service.get("version"),
                         ]
                     )
         logging.debug("Files created: %s" % "HostInfo.csv")
@@ -384,11 +386,11 @@ class Files:
             hostElement.set("name", host)
             for service in HostInfo.host_dict[host]:
                 serviceElement = ET.SubElement(hostElement, "Service")
-                serviceElement.set("port", service["port"])
-                serviceElement.set("protocol", service["protocol"])
-                serviceElement.set("state", service["state"])
-                serviceElement.set("service", service["service"])
-                serviceElement.set("version", service["version"])
+                serviceElement.set("port", service.get("port"))
+                serviceElement.set("protocol", service.get("protocol"))
+                serviceElement.set("state", service.get("state"))
+                serviceElement.set("service", service.get("service"))
+                serviceElement.set("version", service.get("version"))
                 # serviceElement.set("rpc_info", service["rpc_info"])
                 # serviceElement.set("owner", service["owner"])
 
@@ -400,102 +402,12 @@ class Files:
         # tree.write(HostInfo.saveDir + "/" + "HostInfo.xml")
         logging.debug("Files created: %s" % "HostInfo.xml")
 
-    def save_sql3() -> None:
-        import sqlite3
-
-        conn = sqlite3.connect(HostInfo.saveDir + "/" + "HostInfo.db")
-        c = conn.cursor()
-        c.execute(
-            "CREATE TABLE HostInfo (host text, port text, state text, protocol text, owner text, service text, rpc_info text, version text)"
-        )
-        for host in HostInfo.host_dict:
-            for service in HostInfo.host_dict[host]:
-                c.execute(
-                    "INSERT INTO HostInfo VALUES (?,?,?,?,?,?,?,?)",
-                    (
-                        host,
-                        service["port"],
-                        service["state"],
-                        service["protocol"],
-                        "",  # service["owner"],
-                        service["service"],
-                        "",  # service["rpc_info"],
-                        service["version"],
-                    ),
-                )
-        conn.commit()
-        conn.close()
-        logging.debug("Files created: %s" % "HostInfo.db")
-
     def save_html() -> None:
-        head = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        head = """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width, initial-scale=1"><style>h1{text-align:center;background:#161b22;font-size:50px;font-family:"Times New Roman",Times,serif;color:#ddd}body{margin:0;padding:0;background:#0d1117;font-family:'Roboto',sans-serif;height:100vh;overflow:scroll;overflow-x:hidden;width:100vw;text-align:center}.example::-webkit-scrollbar{display:none}.collapsible{text-transform:uppercase;font-size:1.25em;font-weight:900;background:none,linear-gradient(45deg,#1030ffd8,#d2379ccb);background-size:400%;animation:bg-animation 20s infinite alternate;color:white;cursor:pointer;padding:18px;width:40%;text-align:center;outline:2px ridge rgba(0,0,0,.6);border-radius:2rem;font-size:15px}.active,.collapsible:hover{background:linear-gradient(45deg,#d2379b,#102eff)}.content{padding:0 18px;max-height:0;background:#161b22;overflow:hidden;text-align:center;transition:max-height .2s ease-out}.service{background-color:rgba(70,69,69,0.363);color:#d1d5da;padding:4px;width:100%;text-align:left;outline:solid 1px rgba(0,0,0,.6);font-size:15px}@keyframes bg-animation{0%{background-position:left}100%{background-position:right}}</style></head>
+        <body> <h1>Automate Results</h1>
         """
 
-        style = """
-        <style>
-        .collapsible {
-          background-color: rgb(0, 44, 138);
-          color: white;
-          cursor: pointer;
-          padding: 18px;
-          width: 100%;
-          text-align: left;
-          outline: 2px ridge rgba(0, 0, 0, .6);
-          border-radius: 2rem;
-          font-size: 15px;
-        }
-
-        .active, .collapsible:hover {
-          background-color: #555;
-        }
-
-        .content {
-          padding: 0 18px;
-          max-height: 0;
-          overflow: hidden;
-          transition: max-height 0.2s ease-out;
-          background-color: #f1f1f1;
-        }
-        
-        .service {
-          background-color: rgb(238, 238, 238);
-          color: rgb(0, 0, 0);
-          padding: 4px;
-          width: 100%;
-          text-align: left;
-          outline: solid 1px rgba(0, 0, 0, .6);
-          font-size: 15px;
-        }
-        </style>
-        """
-
-        head_2 = """
-        </head>
-        <body>
-        <h1>Automate Results</h1>
-        """
-
-        script = """
-        <script>
-        var coll = document.getElementsByClassName("collapsible");
-        var i;
-        
-        for (i = 0; i < coll.length; i++) {
-          coll[i].addEventListener("click", function() {
-            this.classList.toggle("active");
-            var content = this.nextElementSibling;
-            if (content.style.maxHeight){
-              content.style.maxHeight = null;
-            } else {
-              content.style.maxHeight = content.scrollHeight + "px";
-            } 
-          });
-        }
-        </script>
+        script = """ <script>var coll = document.getElementsByClassName("collapsible");var i;for (i = 0; i < coll.length; i++) { coll[i].addEventListener("click", function() { this.classList.toggle("active"); var content = this.nextElementSibling; if (content.style.maxHeight){ content.style.maxHeight = null; } else { content.style.maxHeight = content.scrollHeight + "px"; } });}</script>
         """
         close = """
         </body>
@@ -504,8 +416,6 @@ class Files:
 
         with open(HostInfo.saveDir + "/" + "Automate.html", "w") as f:
             f.write(head)
-            f.write(style)
-            f.write(head_2)
             for host in HostInfo.host_dict:
                 f.write(
                     '<button type="button" class="collapsible">%s</button><div class="content">'
@@ -522,12 +432,19 @@ class Files:
                         </p>
                         """
                         % (
-                            service["port"],
-                            service["protocol"],
-                            service["state"],
-                            service["service"],
-                            service["version"],
+                            service.get("port"),
+                            service.get("protocol"),
+                            service.get("state"),
+                            service.get("service"),
+                            service.get("version"),
                         )
+                    )
+                    # When there are no more services beak
+                    if service == HostInfo.host_dict[host][-1]:
+                        break
+                else:
+                    f.write(
+                        """<a class="service"><strong>No Service Found</strong></a>"""
                     )
                 f.write("</div>")
             f.write(script)
@@ -546,199 +463,151 @@ class Files:
 # ------------------------------------------------------------------------------
 class NmapParse:
     def nmap_parser() -> None:
-        if HostInfo.inputFile.endswith(".xml"):
-            NmapParse.xml.nmap_parser(HostInfo.inputFile)
-        if HostInfo.inputFile.endswith(".gnmap"):
-            NmapParse.gnmap.nmap_parser()
-        if HostInfo.inputFile.endswith(".nmap"):
-            NmapParse.nmap.nmap_parser()
+        with open(HostInfo.inputFile) as f:
+            data = f.read()
+        try:
+            if HostInfo.inputFile.endswith(".xml"):
+                NmapParse.xml.parse(data)
+            if HostInfo.inputFile.endswith(".gnmap"):
+                NmapParse.gnmap.parse(data)
+            if HostInfo.inputFile.endswith(".nmap"):
+                NmapParse.nmap.parse(data)
+        except NotImplementedError as e:
+            logging.critical("NotImplementedError - Nmap Parser - (%s)" % e)
+            sys.exit(1)
+        except Exception as e:
+            logging.critical("Parsing file exiting (%s)" % e)
+            sys.exit(1)
 
     class nmap:
-        # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
-        def nmap_parser() -> None:
-            logging.info("Parsing Nmap file")
-            NmapParse.nmap.__line_extractor(HostInfo.inputFile)
-            logging.info("Finished parsing Nmap file")
-
-        def __line_extractor(inputFile) -> None:
-            with open(inputFile, "r") as f:
-                lines = f.readlines()
-            host = ""
-            port_lines = []
-            for line in lines:
-                if "Nmap scan report for" in line:
-                    # Regex to extract the IP address
-                    host = re.findall(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", line)[0]
-                if "open" in line:
-                    port_lines.append(NmapParse.nmap.__port_extractor(line))
-                if "MAC Address:" in line:
-                    # serv_os = NmapParse.nmap.__os_extractor(line)
-                    if port_lines:
-                        logging.debug("Host Info: %s" % {host: port_lines})
-                        HostInfo.update_host(update={host: port_lines})
-                    host = ""
-                    port_lines = []
-
-        def __port_extractor(line) -> list:
-            # Remove any new lines from line
-            line = line.replace("\r", "").replace("\n", "")
-
-            line = line.split(" ")
-            port = line[0].split("/")[0]
-            protocol = line[0].split("/")[1]
-            # Search for the state
-            for index, item in enumerate(line):
-                if "open" in item:
-                    state = item
-                    # service is the remainder of the line
-                    service = " ".join(line[index + 1 :])
-                if "filtered" in item:
-                    state = item
-                    service = " ".join(line[index + 1 :])
-            version = "N/A in Nmap file"
-            temp_dict = {}
-            temp_dict.update({"port": port})
-            temp_dict.update({"state": state})
-            temp_dict.update({"protocol": protocol})
-            temp_dict.update({"service": service})
-            temp_dict.update({"version": version})
-
-            # Old version
-            # retVal = [port, state, protocol, owner, service, rpc_info, version]
-            logging.debug("Port line: %s" % temp_dict)
-            return temp_dict
-
-        def __os_extractor(line) -> str:
-            os = line.split(" ")[3]
-            os = os.replace("\n", "")
-            os = os.replace(";", "")
-            logging.debug("OS line: %s" % os)
-            return os
+        def parse(file) -> None:
+            raise NotImplementedError(
+                "NMAP FILE TYPE NOT SUPPORTED ON VERSION %s" % VERSION
+            )
+            logging.info("Parsing NMAP file %s" % HostInfo.inputFile)
 
     class xml:
-        # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
-        def nmap_parser(infile) -> None:
+        def parse(data) -> dict:
+            """
+            Takes in an XML file from Nmap and parses it into a dictionary
+
+            Returns:
+                dict: Dictionary of hosts and services
+                dict{host: [service, service, service], host: [service, service, service]}
+            """
             import xml.etree.ElementTree as ET
 
-            logging.info("Opening %s and extracting lines" % HostInfo.inputFile)
-            tree = ET.parse(infile)
-            root = tree.getroot()
-            NmapParse.xml.__extractor(root)
+            logging.info("Parsing XML file %s" % HostInfo.inputFile)
+            temp_dict = {}
+            root = ET.fromstring(data)
+            host_data = root.findall("host")
+            for x in host_data:
+                ip = x.find("address").get("addr")
+                temp_dict[ip] = []
+                ports = x.findall("ports/port")
+                for port in ports:
+                    temp_dict[ip].append(
+                        {
+                            "port": port.get("portid"),
+                            "state": port.find("state").get("state"),
+                            "protocol": port.get("protocol"),
+                            "service": port.find("service").get("name"),
+                            "version": port.find("service").get("product"),
+                        }
+                    )
+                    for key in temp_dict[ip][-1]:
+                        if temp_dict[ip][-1][key] is None:
+                            temp_dict[ip][-1][key] = ""
 
-        def __extractor(root) -> None:
-            for host in root.findall("host"):
-                ip_address = host.find("address").get("addr")
-                try:
-                    os = NmapParse.xml.__extract_os(host)
-                except AttributeError:
-                    os = ""
-                allList = NmapParse.xml.__extract_all(host)
-                HostInfo.update_host(update={ip_address: allList}, os={ip_address: os})
-
-        def __extract_os(host) -> list:
-            os = []
-            os.append(host.find("os/osmatch").get("name"))
-            os_accuracy = host.find("os/osmatch").get("accuracy")
-            os.append(os_accuracy)
-            logging.debug("OS line: %s" % os)
-            return os
-
-        def __extract_all(host) -> list:
-            allList = []
-
-            for port in host.findall("ports/port"):
-                templist = {}
-                serv = port.find("service").get("name")
-                serv2 = port.find("service").get("product")
-                if not serv:
-                    serv = "unknown"
-                if not serv2:
-                    serv2 = "unknown"
-                service = serv + " " + serv2
-                templist.update({"port": port.get("portid")})
-                templist.update({"state": port.find("state").get("state")})
-                templist.update({"protocol": port.get("protocol")})
-                templist.update({"service": service})
-                templist.update({"version": port.find("service").get("version")})
-                for item in templist:
-                    if templist[item] == None or templist[item] == "":
-                        templist[item] = "unknown"
-                allList.append(templist)
-
-            logging.debug("Port line: %s" % allList)
-            return allList
+            HostInfo.update_host(update=temp_dict)
+            return temp_dict
 
     class gnmap:
-        def nmap_parser() -> None:
-            logging.info("Parsing Nmap file")
-            __infileLines = []
-            __infileLines = NmapParse.gnmap.__get_lines(__infileLines)
-            for line in __infileLines:
-                NmapParse.gnmap.__extractor(line)
-            logging.info("Finished parsing Nmap file")
-
-        def __get_lines(__infileLines) -> None:
-            try:
-                logging.info("Opening %s and extracting lines" % HostInfo.inputFile)
-                with open(HostInfo.inputFile, "r") as f:
-                    for line in f:
-                        if line[0] == "#":
-                            continue
-                        elif "Ports:" in line:
-                            __infileLines.append(line)
-                return __infileLines
-            except FileNotFoundError as e:
-                logging.critical(e)
-                sys.exit(1)
-            except OSError as e:
-                logging.critical(e)
-                sys.exit(1)
-
-        def __extractor(line: str) -> None:
-
-            line = line.split()
-            ip_address = line[1]
-            allList = []
-            for index, item in enumerate(line):
-                if "Ports:" in item:
-                    line = line[(index + 1) :]
-                if "Ignored" in item:
-                    line = line[: line.index("Ignored")]
-            # line = line[4:-4]
-            line = "".join(line)
-            line = line.split(",")
-            for ports_r in line:
-                ports = NmapParse.gnmap.__ports_list(ports_r)
-                allList.append(ports)
-            HostInfo.update_host(update={ip_address: allList})
-
-        def __ports_list(ports_r: list) -> list:
+        def parse(data) -> None:
             # ($port, $state, $protocol, $owner, $service, $rpc_info, $version)
-            invalid_chars = "\<>:|?*;=!^"
-            for char in invalid_chars:
-                if char in ports_r:
-                    logging.debug("Invalid character %s found in: %s" % (char, ports_r))
-                    ports_r = ports_r.replace(char, "_")
-            ports = ports_r.split("/")
-            logging.debug("Port line: %s" % ports)
-            if ports == [""]:
-                ports = [
-                    "unknown",
-                    "unknown",
-                    "unknown",
-                    "unknown",
-                    "unknown",
-                    "unknown",
-                    "unknown",
-                ]
-            ports = {
-                "port": ports[0],
-                "state": ports[1],
-                "protocol": ports[2],
-                "service": ports[3],
-                "version": ports[4],
-            }
-            return ports
+            logging.info("Parsing GNMAP file ")
+            # All of the hosts
+            hosts = NmapParse.gnmap.findhosts(data)
+            # All of the live hosts
+            for host in hosts:
+                if NmapParse.gnmap.hoststatus(host, data):
+                    ports = NmapParse.gnmap.hostports(host, data)
+                    HostInfo.update_host(update={host: ports})
+
+        def findhosts(file_contents) -> list:
+            """
+            Pass in the file contents and return a list of hosts
+
+            for each line regex the for the ip address
+            as long as it follows this format
+            Host: <ip> <hostname>
+            """
+            import re
+
+            regex = re.compile(r"Host: (\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})")
+            hosts = []
+            for line in file_contents.splitlines():
+                if regex.search(line):
+                    hosts.append(regex.search(line).group(1))
+            return sorted(list(set(hosts)))
+
+        def hoststatus(host, file_contents) -> bool:
+            """
+            Pass in a an host ip and the file contents and it will return True if the host is up
+
+            Host: <host> (<wildcard>)	Status: Up
+            return True if up
+            return False if down
+            """
+            import re
+
+            regex = re.compile(r"Host: %s.*Status: (\w+)" % host)
+            for line in file_contents.splitlines():
+                if regex.search(line):
+                    if regex.search(line).group(1) == "Up":
+                        return True
+            return False
+
+        def hostports(host, file_contents) -> list:
+            """
+            Pass in a an host ip and the file contents and it will return a list of ports
+
+            First get the line that contains the ports
+            Host: <host> (<wildcard>)	Ports:
+
+            Then find all of the ports that follow this format
+            port/state/protocol/owner/service/rpc_info/version/
+            """
+            import re
+
+            regex = re.compile(r"Host: %s.*Ports: (\w+)" % host)
+            line_ports = ""
+            dict_port = {}
+            list_ports = []
+            for line in file_contents.splitlines():
+                if regex.search(line):
+                    # Remove the regex match from the line
+                    line_ports = line.replace(regex.search(line).group(0), "")
+                    break
+            # print("%s ---> %s" % (host, line_ports))
+            # If the line_ports is empty then there are no ports open
+            if not line_ports:
+                return list_ports
+            # Get the ports from the line /port/state/protocol/owner/service/rpc_info/version/
+            regex = re.compile(r"(\d+)/(\w*)/(\w*)/(\w*)/(\w*)/(\w*)/(\w*)/")
+            ports = regex.findall(line_ports)
+            for port in ports:
+                dict_port = {
+                    "port": port[0],
+                    "state": port[1],
+                    "protocol": port[2],
+                    "owner": port[3],
+                    "service": port[4],
+                    "rpc_info": port[5],
+                    "version": port[6],
+                }
+                list_ports.append(dict_port)
+            return list_ports
 
 
 # ------------------------------------------------------------------------------

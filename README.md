@@ -47,6 +47,14 @@ python3 Automate.py -c
 ```
 
 # Updates
+Version 0.0.6 beta
+- Fixed bug where the program would fail if host is up but no ports are open
+- Removed nmap parsing due to issues with nmap parsing with different versions of nmap and output formats
+- Changed the HTML output to be more readable and easier to use
+- Modified the parsing functions to be more reliable (hopefully)
+- Changed the way the program handles the gnmap files using regex for more reliable parsing (hopefully)
+- Changed the way the program handles the XML files for more reliable parsing (hopefully)
+
 Version 0.0.5 beta
 - Additional optimizations
 - Changed storage type to dict
