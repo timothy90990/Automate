@@ -403,15 +403,10 @@ class Files:
         logging.debug("Files created: %s" % "HostInfo.xml")
 
     def save_html() -> None:
-        head = """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width, initial-scale=1"><style>h1{text-align:center;background:#161b22;font-size:50px;font-family:"Times New Roman",Times,serif;color:#ddd}body{margin:0;padding:0;background:#0d1117;font-family:'Roboto',sans-serif;height:100vh;overflow:scroll;overflow-x:hidden;width:100vw;text-align:center}.example::-webkit-scrollbar{display:none}.collapsible{text-transform:uppercase;font-size:1.25em;font-weight:900;background:none,linear-gradient(45deg,#1030ffd8,#d2379ccb);background-size:400%;animation:bg-animation 20s infinite alternate;color:white;cursor:pointer;padding:18px;width:40%;text-align:center;outline:2px ridge rgba(0,0,0,.6);border-radius:2rem;font-size:15px}.active,.collapsible:hover{background:linear-gradient(45deg,#d2379b,#102eff)}.content{padding:0 18px;max-height:0;background:#161b22;overflow:hidden;text-align:center;transition:max-height .2s ease-out}.service{background-color:rgba(70,69,69,0.363);color:#d1d5da;padding:4px;width:100%;text-align:left;outline:solid 1px rgba(0,0,0,.6);font-size:15px}@keyframes bg-animation{0%{background-position:left}100%{background-position:right}}</style></head>
-        <body> <h1>Automate Results</h1>
+        head = """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width, initial-scale=1"><style>h1{text-align:center;background:#161b22;font-size:50px;font-family:"Times New Roman",Times,serif;color:#ddd}body{background:#0d1117;font-family:'Roboto',sans-serif;overflow:scroll;overflow-x:hidden;text-align:center}.wrapper{width:45rem;margin-inline:auto}.example::-webkit-scrollbar{display:none}.collapsible{text-transform:uppercase;font-size:1.25em;font-weight:900;background:none,linear-gradient(45deg,#1030ff8e,#3794d269);background-size:400%;animation:bg-animation 20s infinite alternate;cursor:pointer;padding:18px;width:100%;text-align:center;outline:2px ridge rgba(0,0,0,.6);border-radius:2rem;font-size:15px}.active,.collapsible:hover{background:none,linear-gradient(45deg,#1030ff48,#1030ffa6);background-size:400%;animation:bg-animation 1s infinite alternate}.content{padding:0 18px;max-height:0;background:#161b22;overflow:hidden;text-align:justify;transition:max-height .2s ease-out;margin-inline:auto;width:90%}.collapsible,.content,.sub-content{margin-bottom:5px;color:white}.sub-content{padding:5px;font-size:15px}.sub-content:hover{background:#161b22}@keyframes bg-animation{0%{background-position:left}100%{background-position:right}}.github-corner{position:sticky;bottom:0;right:0;text-align:right}.gh{text-decoration:none;color:white;text-transform:uppercase}.gh:hover{text-decoration:none;color:yellow}.gh:focus{text-decoration:none;color:orange}.gh:active{text-decoration:none;color:teal}</style></head><body><h1><a class=gh href=https://github.com/timothy90990/Automate title=a>Automate Results</a></h1><div class=wrapper>
         """
 
-        script = """ <script>var coll = document.getElementsByClassName("collapsible");var i;for (i = 0; i < coll.length; i++) { coll[i].addEventListener("click", function() { this.classList.toggle("active"); var content = this.nextElementSibling; if (content.style.maxHeight){ content.style.maxHeight = null; } else { content.style.maxHeight = content.scrollHeight + "px"; } });}</script>
-        """
-        close = """
-        </body>
-        </html>
+        close = """</div><script>var coll=document.getElementsByClassName("collapsible");var i;for(i=0;i<coll.length;i++){coll[i].addEventListener("click",function(){this.classList.toggle("active");var a=this.nextElementSibling;if(a.style.maxHeight){a.style.maxHeight=null}else{a.style.maxHeight=a.scrollHeight+"px"}})};</script></body></html>
         """
 
         with open(HostInfo.saveDir + "/" + "Automate.html", "w") as f:
@@ -424,11 +419,11 @@ class Files:
                 for service in HostInfo.host_dict[host]:
                     f.write(
                         """<p>
-                            <a class="service"><strong>Port:</strong> %s</a>
-                            <a class="service"><strong>Protocol:</strong> %s</a>
-                            <a class="service"><strong>State:</strong> %s</a>
-                            <a class="service"><strong>Service:</strong> %s</a>
-                            <a class="service"><strong>Version:</strong> %s</a>
+                            <a class="sub-content"><strong>Port:</strong> %s</a>
+                            <a class="sub-content"><strong>Protocol:</strong> %s</a>
+                            <a class="sub-content"><strong>State:</strong> %s</a>
+                            <a class="sub-content"><strong>Service:</strong> %s</a>
+                            <a class="sub-content"><strong>Version:</strong> %s</a>
                         </p>
                         """
                         % (
@@ -444,10 +439,9 @@ class Files:
                         break
                 else:
                     f.write(
-                        """<a class="service"><strong>No Service Found</strong></a>"""
+                        """<a class="sub-content"><strong>No Service Found</strong></a>"""
                     )
                 f.write("</div>")
-            f.write(script)
             f.write(close)
 
         # Open the file in the default browser
