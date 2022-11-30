@@ -403,7 +403,7 @@ class Files:
         logging.debug("Files created: %s" % "HostInfo.xml")
 
     def save_html() -> None:
-        head = """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width, initial-scale=1"><style>h1{text-align:center;background:#161b22;font-size:50px;font-family:"Times New Roman",Times,serif;color:#ddd}body{background:#0d1117;font-family:'Roboto',sans-serif;overflow:scroll;overflow-x:hidden;text-align:center}.wrapper{width:45rem;margin-inline:auto}.example::-webkit-scrollbar{display:none}.collapsible{text-transform:uppercase;font-size:1.25em;font-weight:900;background:none,linear-gradient(45deg,#1030ff8e,#3794d269);background-size:400%;animation:bg-animation 20s infinite alternate;cursor:pointer;padding:18px;width:100%;text-align:center;outline:2px ridge rgba(0,0,0,.6);border-radius:2rem;font-size:15px}.active,.collapsible:hover{background:none,linear-gradient(45deg,#1030ff48,#1030ffa6);background-size:400%;animation:bg-animation 1s infinite alternate}.content{padding:0 18px;max-height:0;background:#161b22;overflow:hidden;text-align:justify;transition:max-height .2s ease-out;margin-inline:auto;width:90%}.collapsible,.content,.sub-content{margin-bottom:5px;color:white}.sub-content{padding:5px;font-size:15px}.sub-content:hover{background:#161b22}@keyframes bg-animation{0%{background-position:left}100%{background-position:right}}.github-corner{position:sticky;bottom:0;right:0;text-align:right}.gh{text-decoration:none;color:white;text-transform:uppercase}.gh:hover{text-decoration:none;color:yellow}.gh:focus{text-decoration:none;color:orange}.gh:active{text-decoration:none;color:teal}</style></head><body><h1><a class=gh href=https://github.com/timothy90990/Automate title=a>Automate Results</a></h1><div class=wrapper>
+        head = """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width, initial-scale=1"><style>h1{text-align:center;background:#161b22;font-size:50px;font-family:"Times New Roman",Times,serif;color:#ddd}body{background:#0d1117;font-family:'Roboto',sans-serif;overflow:scroll;overflow-x:hidden;text-align:center}.wrapper{width:45rem;margin-inline:auto}.example::-webkit-scrollbar{display:none}.collapsible{text-transform:uppercase;font-size:1.25em;font-weight:900;background:none,linear-gradient(45deg,#1030ff8e,#3794d269);background-size:400%;animation:bg-animation 20s infinite alternate;cursor:pointer;padding:18px;width:100%;text-align:center;outline:2px ridge rgba(0,0,0,.6);border-radius:2rem;font-size:15px}.active,.collapsible:hover{background:none,linear-gradient(45deg,#1030ff48,#1030ffa6);background-size:400%;animation:bg-animation 1s infinite alternate}.content{padding:0 18px;max-height:0;background:#161b22;overflow:hidden;text-align:justify;transition:max-height .2s ease-out;margin-inline:auto;width:90%}.collapsible,.content{margin-bottom:5px;color:white}.sub-content-container{display:grid;grid-auto-flow:column;grid-auto-columns:auto}.sub-content{padding:5px;font-size:15px}@keyframes bg-animation{0%{background-position:left}100%{background-position:right}}.github-corner{position:sticky;bottom:0;right:0;text-align:right}.gh{text-decoration:none;color:white;text-transform:uppercase}.gh:hover{text-decoration:none;color:yellow}.gh:focus{text-decoration:none;color:orange}.gh:active{text-decoration:none;color:teal}</style></head><body><h1><a class=gh href=https://github.com/timothy90990/Automate title=a>Automate Results</a></h1><div class=wrapper>
         """
 
         close = """</div><script>var coll=document.getElementsByClassName("collapsible");var i;for(i=0;i<coll.length;i++){coll[i].addEventListener("click",function(){this.classList.toggle("active");var a=this.nextElementSibling;if(a.style.maxHeight){a.style.maxHeight=null}else{a.style.maxHeight=a.scrollHeight+"px"}})};</script></body></html>
@@ -418,13 +418,13 @@ class Files:
                 )
                 for service in HostInfo.host_dict[host]:
                     f.write(
-                        """<p>
-                            <a class="sub-content"><strong>Port:</strong> %s</a>
-                            <a class="sub-content"><strong>Protocol:</strong> %s</a>
-                            <a class="sub-content"><strong>State:</strong> %s</a>
-                            <a class="sub-content"><strong>Service:</strong> %s</a>
-                            <a class="sub-content"><strong>Version:</strong> %s</a>
-                        </p>
+                        """<div class="sub-content-container">
+                        <div class="sub-content"><strong>Port:</strong> %s</div>
+                        <div class="sub-content"><strong>Protocol:</strong> %s</div>
+                        <div class="sub-content"><strong>State:</strong> %s</div>
+                        <div class="sub-content"><strong>Service:</strong> %s</div>
+                        <div class="sub-content"><strong>Version:</strong> %s</div>
+                        </div>
                         """
                         % (
                             service.get("port"),
@@ -439,7 +439,7 @@ class Files:
                         break
                 else:
                     f.write(
-                        """<a class="sub-content"><strong>No Service Found</strong></a>"""
+                        """<div class="sub-content"><strong>No Service Found</strong></div>"""
                     )
                 f.write("</div>")
             f.write(close)
